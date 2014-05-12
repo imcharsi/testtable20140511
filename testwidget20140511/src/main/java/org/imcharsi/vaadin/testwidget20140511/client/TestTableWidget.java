@@ -1113,15 +1113,10 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
 
         @Override
         public void execute() {
-            if (firstvisible > 0) {
+            if (firstvisible >= 0) {
                 firstRowInViewPort = firstvisible;
-                if (firstvisibleOnLastPage > -1) {
-                    scrollBodyPanel
-                            .setScrollPosition(measureRowHeightOffset(firstvisibleOnLastPage));
-                } else {
-                    scrollBodyPanel
-                            .setScrollPosition(measureRowHeightOffset(firstvisible));
-                }
+                scrollBodyPanel
+                        .setScrollPosition(measureRowHeightOffset(firstvisible));
             }
             disableLazyScroller();
         }
@@ -2161,7 +2156,7 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
 
         isNewBody = false;
 
-        if (firstvisible > 0) {
+        if (firstvisible >= 0) {
             enableLazyScroller();
         }
 
