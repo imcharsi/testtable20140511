@@ -7226,7 +7226,33 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
             // get odd scrolling here.
             return;
         }
-        Util.scrollIntoViewVertically(row.getElement());
+        scrollIntoViewVertically2(getElement(), row.getElement());
+    }
+
+    public void scrollIntoViewVertically2(Element thisComponent, Element elem) {
+        int top = elem.getOffsetTop();
+        int height = elem.getOffsetHeight();
+        if (elem.getParentElement() != elem.getOffsetParent()) {
+            top -= elem.getParentElement().getOffsetTop();
+        }
+        com.google.gwt.dom.client.Element cur = elem.getParentElement();
+        while (cur != null && (cur.getNodeType() == 1)) {
+            if (top < cur.getScrollTop()) {
+                cur.setScrollTop(top);
+            }
+            if (top + height > cur.getScrollTop() + cur.getClientHeight()) {
+                cur.setScrollTop(top + height - cur.getClientHeight());
+            }
+            int offsetTop = cur.getOffsetTop();
+            if (cur.getParentNode() != cur.getOffsetParent()) {
+                offsetTop -= cur.getParentElement().getOffsetTop();
+            }
+            top += offsetTop - cur.getScrollTop();
+            if (thisComponent == cur) {
+                break;
+            }
+            cur = cur.getParentElement();
+        }
     }
 
     /**

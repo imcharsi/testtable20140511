@@ -101,7 +101,7 @@ public class TestUI extends UI {
             table2.setContainerDataSource(container2);
             table1.addValueChangeListener(new ListenerOne());
             setContent(layout);
-            setHeight("500px");
+            setHeight("200px");
             setWidth("400px");
         }
     }
