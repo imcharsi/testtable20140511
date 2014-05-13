@@ -5,10 +5,7 @@ import com.vaadin.annotations.Widgetset;
 import com.vaadin.data.Property;
 import com.vaadin.data.util.BeanContainer;
 import com.vaadin.server.VaadinRequest;
-import com.vaadin.ui.Button;
-import com.vaadin.ui.UI;
-import com.vaadin.ui.VerticalLayout;
-import com.vaadin.ui.Window;
+import com.vaadin.ui.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -17,7 +14,6 @@ import org.imcharsi.vaadin.testwidget20140511.TestComponent;
 import org.imcharsi.vaadin.testwidget20140511.TestTable;
 
 import java.io.Serializable;
-import java.util.Random;
 import java.util.Set;
 
 /**
@@ -88,8 +84,57 @@ public class TestUI extends UI {
         }
 
         private TestWindow() {
+            setCaption("test");
             container1.generateData1(20);
             layout.addComponents(table1, table2);
+            table1.setCaption("master");
+            table2.setCaption("detail");
+            table1.setPageLength(5);
+            table1.setSelectable(true);
+            table1.setImmediate(true);
+            table1.setContainerDataSource(container1);
+            table2.setPageLength(5);
+            table2.setSelectable(true);
+            table2.setImmediate(true);
+            table2.setMultiSelect(true);
+            table2.setContainerDataSource(container2);
+            table1.addValueChangeListener(new ListenerOne());
+            setContent(layout);
+            setHeight("200px");
+            setWidth("400px");
+        }
+    }
+
+    private class TestWindow2 extends Window {
+        private TestContainer container1 = new TestContainer();
+        private TestContainer container2 = new TestContainer();
+        private Table table1 = new Table();
+        private Table table2 = new Table();
+        private VerticalLayout layout = new VerticalLayout();
+
+        private class ListenerOne implements Property.ValueChangeListener {
+            @Override
+            public void valueChange(Property.ValueChangeEvent event) {
+                final Integer value = (Integer) event.getProperty().getValue();
+                container2.removeAllItems();
+                if (value != null) {
+                    container2.generateData2(value, 20);
+                }
+                final Set<Integer> set = (Set<Integer>) table2.getValue();
+                if (set.isEmpty()) {
+                    table2.setCurrentPageFirstItemIndex(0);
+                } else {
+                    table2.setCurrentPageFirstItemId(set.iterator().next());
+                }
+            }
+        }
+
+        private TestWindow2() {
+            setCaption("original");
+            container1.generateData1(20);
+            layout.addComponents(table1, table2);
+            table1.setCaption("master");
+            table2.setCaption("detail");
             table1.setPageLength(5);
             table1.setSelectable(true);
             table1.setImmediate(true);
@@ -107,11 +152,11 @@ public class TestUI extends UI {
     }
 
     private VerticalLayout layout = new VerticalLayout();
-    private Button button = new Button();
+    private Button button1 = new Button("test");
+    private Button button2 = new Button("original");
     private TestComponent testComponent = new TestComponent();
-    private Button buttonTwo = new Button();
 
-    private class ListenerOne implements Button.ClickListener {
+    private class Listener1 implements Button.ClickListener {
         @Override
         public void buttonClick(Button.ClickEvent event) {
             final TestWindow window = new TestWindow();
@@ -119,21 +164,19 @@ public class TestUI extends UI {
         }
     }
 
-    private class ListenerTwo implements Button.ClickListener {
-        private final Random random = new Random();
-
+    private class Listener2 implements Button.ClickListener {
         @Override
-        public void buttonClick(Button.ClickEvent clickEvent) {
-            testComponent.setText(Integer.toString(random.nextInt()));
+        public void buttonClick(Button.ClickEvent event) {
+            final TestWindow2 window = new TestWindow2();
+            getUI().addWindow(window);
         }
     }
 
     @Override
     protected void init(VaadinRequest request) {
-//        layout.addComponents(button, testComponent, buttonTwo);
-        layout.addComponents(button);
-        button.addClickListener(new ListenerOne());
-        buttonTwo.addClickListener(new ListenerTwo());
+        layout.addComponents(button1, button2);
+        button1.addClickListener(new Listener1());
+        button2.addClickListener(new Listener2());
         setContent(layout);
     }
 }
