@@ -316,44 +316,6 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
     public final FocusableScrollPanel scrollBodyPanel = new FocusableScrollPanel(
             true);
 
-    private KeyPressHandler navKeyPressHandler = new KeyPressHandler() {
-
-        @Override
-        public void onKeyPress(KeyPressEvent keyPressEvent) {
-            // This is used for Firefox only, since Firefox auto-repeat
-            // works correctly only if we use a key press handler, other
-            // browsers handle it correctly when using a key down handler
-            if (!BrowserInfo.get().isGecko()) {
-                return;
-            }
-
-            NativeEvent event = keyPressEvent.getNativeEvent();
-            if (!enabled) {
-                // Cancel default keyboard events on a disabled Table
-                // (prevents scrolling)
-                event.preventDefault();
-            } else if (hasFocus) {
-                // Key code in Firefox/onKeyPress is present only for
-                // special keys, otherwise 0 is returned
-                int keyCode = event.getKeyCode();
-                if (keyCode == 0 && event.getCharCode() == ' ') {
-                    // Provide a keyCode for space to be compatible with
-                    // FireFox keypress event
-                    keyCode = CHARCODE_SPACE;
-                }
-
-                if (handleNavigation(keyCode,
-                        event.getCtrlKey() || event.getMetaKey(),
-                        event.getShiftKey())) {
-                    event.preventDefault();
-                }
-
-                startScrollingVelocityTimer();
-            }
-        }
-
-    };
-
     private KeyUpHandler navKeyUpHandler = new KeyUpHandler() {
 
         @Override
@@ -382,13 +344,20 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
         }
     };
 
+    private long lastNavigationKeyDownTime =-1;
+    private final int keyboardRepeatDelay = 100;
+
     private KeyDownHandler navKeyDownHandler = new KeyDownHandler() {
 
         @Override
         public void onKeyDown(KeyDownEvent keyDownEvent) {
             NativeEvent event = keyDownEvent.getNativeEvent();
-            // This is not used for Firefox
-            if (BrowserInfo.get().isGecko()) {
+
+            final long time = new Date().getTime();
+            if (lastNavigationKeyDownTime + keyboardRepeatDelay < time) {
+                lastNavigationKeyDownTime = time;
+            } else {
+                event.preventDefault();
                 return;
             }
 
@@ -539,16 +508,7 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
 
         scrollBodyPanel.addScrollHandler(this);
 
-        /*
-         * Firefox auto-repeat works correctly only if we use a key press
-         * handler, other browsers handle it correctly when using a key down
-         * handler
-         */
-        if (BrowserInfo.get().isGecko()) {
-            scrollBodyPanel.addKeyPressHandler(navKeyPressHandler);
-        } else {
-            scrollBodyPanel.addKeyDownHandler(navKeyDownHandler);
-        }
+        scrollBodyPanel.addKeyDownHandler(navKeyDownHandler);
         scrollBodyPanel.addKeyUpHandler(navKeyUpHandler);
 
         scrollBodyPanel.sinkEvents(Event.TOUCHEVENTS);
@@ -6945,16 +6905,6 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
         final int lastRendered = scrollBody.getLastRendered();
         final int firstRendered = scrollBody.getFirstRendered();
 
-        if (postLimit <= lastRendered && preLimit >= firstRendered) {
-            // we're within no-react area, no need to request more rows
-            // remember which firstvisible we requested, in case the server has
-            // a differing opinion
-            lastRequestedFirstvisible = firstRowInViewPort;
-            client.updateVariable(paintableId, "firstvisible",
-                    firstRowInViewPort, false);
-            return;
-        }
-
         if (firstRowInViewPort - pageLength * cache_rate > lastRendered
                 || firstRowInViewPort + pageLength + pageLength * cache_rate < firstRendered) {
             // need a totally new set of rows
@@ -7229,6 +7179,51 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
         Util.scrollIntoViewVertically(row.getElement());
     }
 
+    private void handleNavigationUpDown(int keycode, boolean ctrl, boolean shift) {
+        int direction = 1;
+        if (keycode == KeyCodes.KEY_UP)
+            direction = -1;
+        else if (keycode != KeyCodes.KEY_DOWN)
+            throw new RuntimeException();
+
+        if (direction == 1 && isFocusAtTheEndOfTable()) {
+            return;
+        } else if (direction == -1 && isFocusAtTheBeginningOfTable()) {
+            return;
+        }
+
+        int indexOfToBeFocused = focusedRow.getIndex() + direction;
+        if (direction == -1 && indexOfToBeFocused < 0) {
+            indexOfToBeFocused = 0;
+        } else if (direction == 1 && indexOfToBeFocused >= totalRows) {
+            indexOfToBeFocused = totalRows - 1;
+        }
+        VScrollTableRow toBeFocusedRow = scrollBody.getRowByRowIndex(indexOfToBeFocused);
+
+        if (toBeFocusedRow != null) {
+            // if the next focused row is rendered
+            setRowFocus(toBeFocusedRow);
+            selectFocusedRow(ctrl, shift);
+            // TODO needs scrollintoview ?
+            sendSelectedRows();
+        } else {
+            // scroll down by pixels and return, to wait for
+            // new rows, then select the last item in the
+            // viewport
+            if (ctrl)
+                if (direction == 1)
+                    focusLastItemInNextRender = true;
+                else
+                    focusFirstItemInNextRender = true;
+            else if (direction == 1)
+                selectLastItemInNextRender = true;
+            else
+                selectFirstItemInNextRender = true;
+            multiselectPending = shift;
+            scrollBodyPanel.setScrollPosition(scrollBodyPanel.getScrollPosition() + (direction * scrollingVelocity));
+        }
+    }
+
     /**
      * Handles the keyboard events handled by the table
      *
@@ -7248,12 +7243,7 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
                     .getScrollPosition() + scrollingVelocity);
             return true;
         } else if (keycode == getNavigationDownKey()) {
-            if (isMultiSelectModeAny() && moveFocusDown()) {
-                selectFocusedRow(ctrl, shift);
-
-            } else if (isSingleSelectMode() && !shift && moveFocusDown()) {
-                selectFocusedRow(ctrl, shift);
-            }
+            handleNavigationUpDown(keycode, ctrl, shift);
             return true;
         }
 
@@ -7263,11 +7253,7 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
                     .getScrollPosition() - scrollingVelocity);
             return true;
         } else if (keycode == getNavigationUpKey()) {
-            if (isMultiSelectModeAny() && moveFocusUp()) {
-                selectFocusedRow(ctrl, shift);
-            } else if (isSingleSelectMode() && !shift && moveFocusUp()) {
-                selectFocusedRow(ctrl, shift);
-            }
+            handleNavigationUpDown(keycode, ctrl, shift);
             return true;
         }
 
@@ -7321,6 +7307,7 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
                         setRowFocus(lastVisibleRowInViewPort);
                         selectFocusedRow(ctrl, shift);
                         sendSelectedRows();
+                        scrollBodyPanel.setScrollPosition(scrollBodyPanel.getScrollPosition() - 1);
                     } else {
                         int indexOfToBeFocused = focusedRow.getIndex()
                                 + getFullyVisibleRowCount();
@@ -7338,6 +7325,7 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
                             selectFocusedRow(ctrl, shift);
                             // TODO needs scrollintoview ?
                             sendSelectedRows();
+                            scrollBodyPanel.setScrollPosition(scrollBodyPanel.getScrollPosition() - 1);
                         } else {
                             // scroll down by pixels and return, to wait for
                             // new rows, then select the last item in the
@@ -7374,6 +7362,7 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
                         setRowFocus(firstVisibleRowInViewPort);
                         selectFocusedRow(ctrl, shift);
                         sendSelectedRows();
+                        scrollBodyPanel.setScrollPosition(scrollBodyPanel.getScrollPosition() - 1);
                     } else {
                         int indexOfToBeFocused = focusedRow.getIndex()
                                 - getFullyVisibleRowCount();
@@ -7389,6 +7378,7 @@ public class TestTableWidget extends FlowPanel implements HasWidgets,
                             selectFocusedRow(ctrl, shift);
                             // TODO needs scrollintoview ?
                             sendSelectedRows();
+                            scrollBodyPanel.setScrollPosition(scrollBodyPanel.getScrollPosition() - 1);
                         } else {
                             // unless waiting for the next rowset already
                             // scroll down by pixels and return, to wait for
