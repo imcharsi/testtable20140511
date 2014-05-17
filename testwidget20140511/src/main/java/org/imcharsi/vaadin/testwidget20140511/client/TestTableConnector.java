@@ -265,6 +265,11 @@ public class TestTableConnector extends AbstractHasComponentsConnector implement
                             getWidget().getRenderedRowByKey(
                                     getWidget().focusedRow.getKey()));
                 } else if (getWidget().selectedRowKeys.size() > 0) {
+                    // try to focus any row in selection
+                    getWidget().setRowFocus(
+                            getWidget().getRenderedRowByKey(
+                                    getWidget().selectedRowKeys.iterator()
+                                            .next()));
                 } else {
                     // try to focus any row
                     getWidget().focusRowFromBody();
