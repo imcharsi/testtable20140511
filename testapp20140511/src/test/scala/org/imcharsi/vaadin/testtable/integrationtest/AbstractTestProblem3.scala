@@ -11,8 +11,8 @@ import org.openqa.selenium.chrome.ChromeDriver
 class AbstractTestProblem3(override val buttonName: Option[String], override val testWindowName: Option[String])
     extends FlatSpec with WebBrowser with BeforeAndAfterAll with TestUtil {
   "row 4 in master table".should("be clicked").taggedAs(IntegrationTestTag).in {
-    table1.flatMap(findTableRow(_, "4")).foreach(click.on)
-    table2.flatMap(findTableRow(_, "80"))
+    table1.flatMap(findTableRow(_, "name4")).foreach(click.on)
+    table2.flatMap(findTableRow(_, "name80"))
   }
 
   private var storedScrollTop: Option[String] = None
@@ -24,25 +24,24 @@ class AbstractTestProblem3(override val buttonName: Option[String], override val
 
   "row 96 in detail table".should("be clicked").taggedAs(IntegrationTestTag).in {
     table2Scrollable.foreach(_.underlying.sendKeys(Keys.PAGE_UP))
-    table2.flatMap(findTableRow(_, "96")).foreach(click.on)
-    waitUtil()
+    table2.flatMap(findTableRow(_, "name96")).foreach(click.on)
   }
 
   "row 4 in master table".should("be clicked again").taggedAs(IntegrationTestTag).in {
-    table1.flatMap(findTableRow(_, "3")).foreach(click.on)
-    table2.flatMap(findTableRow(_, "60"))
-    table1.flatMap(findTableRow(_, "4")).foreach(click.on)
-    table2.flatMap(findTableRow(_, "96"))
+    table1.flatMap(findTableRow(_, "name3")).foreach(click.on)
+    table2.flatMap(findTableRow(_, "name60"))
+    table1.flatMap(findTableRow(_, "name4")).foreach(click.on)
+    table2.flatMap(findTableRow(_, "name96"))
   }
 
   "detail table".should("be scrolled into top").taggedAs(IntegrationTestTag).in {
     table2.foreach(scrollTable(_, 0))
-    table2.flatMap(findTableRow(_, "80"))
+    table2.flatMap(findTableRow(_, "name80"))
   }
 
   "detail table".should("be scrolled into bottom").taggedAs(IntegrationTestTag).in {
     table2.foreach(scrollTable(_, 1000))
-    table2.flatMap(findTableRow(_, "103"))
+    table2.flatMap(findTableRow(_, "name103"))
     table2Scrollable.
       flatMap(_.attribute("scrollTop")).
       foreach(s ⇒ assert(storedScrollTop.get == s))

@@ -12,16 +12,14 @@ abstract class AbstractTestProblem1(override val buttonName: Option[String], ove
     extends FlatSpec with WebBrowser with BeforeAndAfterAll with TestUtil {
   "row 19 in master table".should("be clicked").taggedAs(IntegrationTestTag).in {
     table1.foreach(scrollTable(_, 1000))
-    table1.flatMap(findTableRow(_, "19")).foreach(click.on)
-    waitUtil()
+    table1.flatMap(findTableRow(_, "name19")).foreach(click.on)
     scrollLayout(1000)
-    table2.flatMap(findTableRow(_, "380"))
+    table2.flatMap(findTableRow(_, "name380"))
   }
 
   "row 418 in detail table".should("be clicked").taggedAs(IntegrationTestTag).in {
     table2.foreach(scrollTable(_, 1000))
-    table2.flatMap(findTableRow(_, "418")).foreach(click.on)
-    waitUtil()
+    table2.flatMap(findTableRow(_, "name418")).foreach(click.on)
   }
 
   var scrollTop: Option[String] = None
@@ -30,15 +28,13 @@ abstract class AbstractTestProblem1(override val buttonName: Option[String], ove
     scrollLayout(0)
     scrollTop = layoutScrollable.flatMap(_.attribute("scrollTop"))
     table1.foreach(scrollTable(_, 0))
-    table1.flatMap(findTableRow(_, "0")).map(click.on)
-    waitUtil()
+    table1.flatMap(findTableRow(_, "name0")).map(click.on)
   }
 
   "row 19 in master table".should("be clicked again").taggedAs(IntegrationTestTag).in {
     table1.foreach(scrollTable(_, 1000))
-    table1.flatMap(findTableRow(_, "19")).foreach(click.on)
-    waitUtil()
-    table2.flatMap(findTableRow(_, "418"))
+    table1.flatMap(findTableRow(_, "name19")).foreach(click.on)
+    table2.flatMap(findTableRow(_, "name418"))
   }
 
   "layout's scrollTop".should("be at top").taggedAs(IntegrationTestTag).in {
